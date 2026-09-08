@@ -6,6 +6,7 @@ import { formatISODateWIB } from "@/lib/time";
 import { ImagePlus, Loader2, Save, Plus, Calendar, Clock } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { validateImageFile, validateMenuInput } from "@/lib/validation";
 
 // Helper to format components string array to multiline string for textarea
 const arrToStr = (arr: string[]) => arr.join("\n");
@@ -149,8 +150,11 @@ export default function AdminMenuEditorPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage({ type: "error", text: "Ukuran file maksimal 5MB." });
+    // Validate file type and size
+    const imageValidation = validateImageFile(file);
+    if (!imageValidation.valid) {
+      setMessage({ type: "error", text: imageValidation.errors.join(" ") });
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -187,14 +191,36 @@ export default function AdminMenuEditorPage() {
     setSaving(true);
     setMessage(null);
 
+    const parsedComponents = strToArr(components);
+
+    // Validate input fields
+    const validation = validateMenuInput({
+      menuName: menuName.trim(),
+      components: parsedComponents,
+      beneficiaries,
+      safeHours,
+      nutritionist: nutritionist.trim(),
+      b1Prod, b1Del,
+      b2Prod, b2Del,
+      b3Prod, b3Del,
+      eSmall, pSmall, fSmall, cSmall, fiSmall,
+      eLarge, pLarge, fLarge, cLarge, fiLarge,
+    });
+
+    if (!validation.valid) {
+      setMessage({ type: "error", text: validation.errors.join(" • ") });
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       menu_date: date,
-      menu_name: menuName,
-      menu_components: strToArr(components),
+      menu_name: menuName.trim(),
+      menu_components: parsedComponents,
       photo_url: photoUrl,
       beneficiary_count: beneficiaries,
       safe_hours: safeHours,
-      nutritionist_name: nutritionist,
+      nutritionist_name: nutritionist.trim() || null,
       
       batch1_production_time: b1Prod || null,
       batch1_delivery_time: b1Del || null,

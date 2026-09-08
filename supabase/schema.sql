@@ -122,7 +122,7 @@ CREATE POLICY "Authenticated users can upload menu photos"
 DROP POLICY IF EXISTS "Authenticated users can update menu photos" ON storage.objects;
 CREATE POLICY "Authenticated users can update menu photos"
   ON storage.objects FOR UPDATE
-  USING (bucket_id = 'bucket_id = menu-photos' AND auth.role() = 'authenticated');
+  USING (bucket_id = 'menu-photos' AND auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Authenticated users can delete menu photos" ON storage.objects;
 CREATE POLICY "Authenticated users can delete menu photos"
