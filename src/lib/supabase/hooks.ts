@@ -6,7 +6,7 @@ import type { DailyMenu, KitchenConfig } from "@/lib/supabase/types";
 import { formatISODateWIB } from "@/lib/time";
 
 // ── Demo / fallback data when Supabase is not configured ──
-const DEMO_MENU: DailyMenu = {
+export const DEMO_MENU: DailyMenu = {
   id: "demo-1",
   menu_date: formatISODateWIB(new Date()),
   menu_name: "Nasi Ayam Geprek dengan Sambal Matah",
@@ -45,7 +45,7 @@ const DEMO_MENU: DailyMenu = {
   updated_at: new Date().toISOString(),
 };
 
-const DEMO_KITCHEN_CONFIG: KitchenConfig = {
+export const DEMO_KITCHEN_CONFIG: KitchenConfig = {
   id: "demo-config",
   kitchen_name: "Dapur SPPG Aje",
   instagram_url: "https://instagram.com/dapursppg",
@@ -53,7 +53,7 @@ const DEMO_KITCHEN_CONFIG: KitchenConfig = {
   updated_at: new Date().toISOString(),
 };
 
-function isSupabaseConfigured(): boolean {
+export function isSupabaseConfigured(): boolean {
   return (
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://your-project.supabase.co" &&

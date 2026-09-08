@@ -7,6 +7,7 @@ import { ImagePlus, Loader2, Save, Plus, Calendar, Clock } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { validateImageFile, validateMenuInput } from "@/lib/validation";
+import { isSupabaseConfigured, DEMO_MENU } from "@/lib/supabase/hooks";
 
 // Helper to format components string array to multiline string for textarea
 const arrToStr = (arr: string[]) => arr.join("\n");
@@ -64,6 +65,49 @@ export default function AdminMenuEditorPage() {
   const fetchMenu = useCallback(async (selectedDate: string) => {
     setLoading(true);
     setMessage(null);
+
+    // If Supabase credentials are not configured, load demo menu or empty form
+    if (!isSupabaseConfigured()) {
+      if (selectedDate === formatISODateWIB(new Date())) {
+        setId(DEMO_MENU.id);
+        setMenuName(DEMO_MENU.menu_name);
+        setComponents(arrToStr(DEMO_MENU.menu_components));
+        setBeneficiaries(DEMO_MENU.beneficiary_count);
+        setSafeHours(DEMO_MENU.safe_hours);
+        setNutritionist(DEMO_MENU.nutritionist_name || "");
+        setPhotoUrl(DEMO_MENU.photo_url);
+        setB1Prod(DEMO_MENU.batch1_production_time || "");
+        setB1Del(DEMO_MENU.batch1_delivery_time || "");
+        setB1Delivered(DEMO_MENU.batch1_delivered || false);
+        setB2Prod(DEMO_MENU.batch2_production_time || "");
+        setB2Del(DEMO_MENU.batch2_delivery_time || "");
+        setB2Delivered(DEMO_MENU.batch2_delivered || false);
+        setB3Prod(DEMO_MENU.batch3_production_time || "");
+        setB3Del(DEMO_MENU.batch3_delivery_time || "");
+        setB3Delivered(DEMO_MENU.batch3_delivered || false);
+        setESmall(DEMO_MENU.energy_small?.toString() || "");
+        setPSmall(DEMO_MENU.protein_small?.toString() || "");
+        setFSmall(DEMO_MENU.fat_small?.toString() || "");
+        setCSmall(DEMO_MENU.carbs_small?.toString() || "");
+        setFiSmall(DEMO_MENU.fiber_small?.toString() || "");
+        setELarge(DEMO_MENU.energy_large?.toString() || "");
+        setPLarge(DEMO_MENU.protein_large?.toString() || "");
+        setFLarge(DEMO_MENU.fat_large?.toString() || "");
+        setCLarge(DEMO_MENU.carbs_large?.toString() || "");
+        setFiLarge(DEMO_MENU.fiber_large?.toString() || "");
+      } else {
+        setId(null);
+        setMenuName(""); setComponents(""); setPhotoUrl(null);
+        setB1Prod(""); setB1Del(""); setB1Delivered(false);
+        setB2Prod(""); setB2Del(""); setB2Delivered(false);
+        setB3Prod(""); setB3Del(""); setB3Delivered(false);
+        setESmall(""); setPSmall(""); setFSmall(""); setCSmall(""); setFiSmall("");
+        setELarge(""); setPLarge(""); setFLarge(""); setCLarge(""); setFiLarge("");
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("daily_menus")
@@ -127,7 +171,10 @@ export default function AdminMenuEditorPage() {
       }
     } catch (e: unknown) {
       const err = e as Error;
-      setMessage({ type: "error", text: "Gagal memuat data: " + err.message });
+      const errMsg = err.message === "Failed to fetch"
+        ? "Koneksi ke Supabase gagal (Failed to fetch). Silakan restart server Next.js (npm run dev) jika baru mengubah .env.local, atau periksa jaringan internet."
+        : "Gagal memuat data: " + err.message;
+      setMessage({ type: "error", text: errMsg });
     } finally {
       setLoading(false);
     }
