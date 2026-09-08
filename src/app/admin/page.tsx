@@ -31,10 +31,12 @@ export default async function AdminDashboardPage() {
       const supabase = await createClient();
 
       // Verify real DB connectivity
-      const { error: pingError } = await supabase
+      const { data: pingData, error: pingError } = await supabase
         .from("kitchen_config")
         .select("id")
         .limit(1);
+
+      console.log("[Admin] DB ping - error:", pingError, "data:", pingData);
 
       if (!pingError) {
         dbConnected = true;
@@ -48,7 +50,8 @@ export default async function AdminDashboardPage() {
 
         todayMenu = data;
       }
-    } catch {
+    } catch (err) {
+      console.error("[Admin] DB connection error:", err);
       dbConnected = false;
     }
   }
