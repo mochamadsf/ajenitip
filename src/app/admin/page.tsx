@@ -3,24 +3,54 @@ import { ShieldCheck, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 import { formatISODateWIB } from "@/lib/time";
 
+/**
+ * Returns true if valid Supabase credentials are present in the environment.
+ * This is the same logic as isSupabaseConfigured() in hooks.ts but
+ * usable server-side without importing a "use client" module.
+ */
+function isSupabaseConfiguredServer(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return (
+    !!url &&
+    url !== "https://your-project.supabase.co" &&
+    !!key &&
+    key !== "your-anon-key-here"
+  );
+}
+
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
+  const configured = isSupabaseConfiguredServer();
   const today = formatISODateWIB(new Date());
 
-  // Fetch today's menu stats
-  const { data: todayMenu } = await supabase
-    .from("daily_menus")
-    .select("menu_name, beneficiary_count")
-    .eq("menu_date", today)
-    .single();
-
-  // Determine DB connection status by running a simple query
+  let todayMenu: { menu_name: string; beneficiary_count: number } | null = null;
   let dbConnected = false;
-  try {
-    const { error } = await supabase.from("kitchen_config").select("id").limit(1);
-    dbConnected = !error;
-  } catch {
-    dbConnected = false;
+
+  if (configured) {
+    try {
+      const supabase = await createClient();
+
+      // Verify real DB connectivity
+      const { error: pingError } = await supabase
+        .from("kitchen_config")
+        .select("id")
+        .limit(1);
+
+      if (!pingError) {
+        dbConnected = true;
+
+        // Fetch today's menu stats only if connected
+        const { data } = await supabase
+          .from("daily_menus")
+          .select("menu_name, beneficiary_count")
+          .eq("menu_date", today)
+          .single();
+
+        todayMenu = data;
+      }
+    } catch {
+      dbConnected = false;
+    }
   }
 
   return (
@@ -30,7 +60,7 @@ export default async function AdminDashboardPage() {
           Selamat datang, Admin
         </h1>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="flex h-2 w-2">
+          <span className="flex h-2 w-2 relative">
             <span
               className={`animate-ping absolute inline-flex h-2 w-2 rounded-full opacity-75 ${
                 dbConnected ? "bg-emerald-400" : "bg-red-400"
@@ -42,7 +72,11 @@ export default async function AdminDashboardPage() {
               }`}
             ></span>
           </span>
-          {dbConnected ? "Database Terhubung" : "Database Tidak Terhubung (Mode Demo)"}
+          {dbConnected
+            ? "Database Terhubung"
+            : configured
+            ? "Database Gagal Terhubung"
+            : "Database Tidak Terhubung (Mode Demo)"}
         </div>
       </div>
 
@@ -78,8 +112,8 @@ export default async function AdminDashboardPage() {
           </h2>
           <ul className="text-xs text-muted-foreground space-y-2 mt-3 list-disc pl-4">
             <li>Pastikan mengunggah foto ompreng yang jelas.</li>
-            <li>Jam produksi & pengiriman sangat penting untuk countdown Food Safety.</li>
-            <li>Isi informasi gizi porsi kecil & besar dengan akurat.</li>
+            <li>Jam produksi &amp; pengiriman sangat penting untuk countdown Food Safety.</li>
+            <li>Isi informasi gizi porsi kecil &amp; besar dengan akurat.</li>
           </ul>
         </div>
       </div>
