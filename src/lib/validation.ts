@@ -1,25 +1,23 @@
+import type { NutrientKey, PortionKey } from "@/lib/supabase/types";
+import { NUTRIENT_KEYS } from "@/lib/supabase/types";
+import { PORTIONS } from "@/lib/constants";
+
+export type BatchKey = "b1" | "b2" | "b3";
+
+export interface BatchTimesInput {
+  prod: string;
+  delStart: string;
+  delEnd: string;
+}
+
 export interface MenuFormInput {
   menuName: string;
   components: string[];
   beneficiaries: number;
   safeHours: number;
   nutritionist: string;
-  b1Prod: string;
-  b1Del: string;
-  b2Prod: string;
-  b2Del: string;
-  b3Prod: string;
-  b3Del: string;
-  eSmall: string;
-  pSmall: string;
-  fSmall: string;
-  cSmall: string;
-  fiSmall: string;
-  eLarge: string;
-  pLarge: string;
-  fLarge: string;
-  cLarge: string;
-  fiLarge: string;
+  batches: Record<BatchKey, BatchTimesInput>;
+  nutrition: Record<PortionKey, Record<NutrientKey, string>>;
 }
 
 export interface ValidationResult {
@@ -42,6 +40,20 @@ export function validateImageFile(file: File): ValidationResult {
 
   return { valid: errors.length === 0, errors };
 }
+
+const BATCH_LABELS: Record<BatchKey, string> = {
+  b1: "Batch 1",
+  b2: "Batch 2",
+  b3: "Batch 3",
+};
+
+const NUTRIENT_LABELS: Record<NutrientKey, string> = {
+  energy: "Energi",
+  protein: "Protein",
+  fat: "Lemak",
+  carbs: "Karbohidrat",
+  fiber: "Serat",
+};
 
 export function validateMenuInput(input: MenuFormInput): ValidationResult {
   const errors: string[] = [];
@@ -70,20 +82,24 @@ export function validateMenuInput(input: MenuFormInput): ValidationResult {
     errors.push("Masa aman konsumsi harus di antara 1 - 24 jam.");
   }
 
-  // Batch Time Logic Validation (Delivery time must be after production time if both provided)
-  const validateBatchTimes = (prod: string, del: string, batchName: string) => {
-    if (prod && del) {
-      if (del < prod) {
-        errors.push(`Jam pengiriman ${batchName} (${del}) tidak boleh lebih awal dari jam produksi (${prod}).`);
-      }
+  // Batch Time Logic — pengiriman berupa rentang (mulai - selesai), format 24 jam
+  (Object.keys(BATCH_LABELS) as BatchKey[]).forEach((key) => {
+    const { prod, delStart, delEnd } = input.batches[key];
+    const label = BATCH_LABELS[key];
+
+    if (prod && delStart && delStart < prod) {
+      errors.push(
+        `Rentang pengiriman ${label} tidak boleh dimulai sebelum jam produksi (${prod}).`,
+      );
     }
-  };
+    if (delStart && delEnd && delEnd < delStart) {
+      errors.push(
+        `Jam selesai pengiriman ${label} (${delEnd}) tidak boleh lebih awal dari jam mulai (${delStart}).`,
+      );
+    }
+  });
 
-  validateBatchTimes(input.b1Prod, input.b1Del, "Batch 1");
-  validateBatchTimes(input.b2Prod, input.b2Del, "Batch 2");
-  validateBatchTimes(input.b3Prod, input.b3Del, "Batch 3");
-
-  // Nutrition Validation (must be non-negative numbers if provided)
+  // Nutrition Validation (4 kategori porsi; angka non-negatif jika diisi)
   const checkNutrition = (val: string, label: string) => {
     if (val !== "" && val !== null && val !== undefined) {
       const num = parseFloat(val);
@@ -95,17 +111,14 @@ export function validateMenuInput(input: MenuFormInput): ValidationResult {
     }
   };
 
-  checkNutrition(input.eSmall, "Energi (Porsi Kecil)");
-  checkNutrition(input.pSmall, "Protein (Porsi Kecil)");
-  checkNutrition(input.fSmall, "Lemak (Porsi Kecil)");
-  checkNutrition(input.cSmall, "Karbo (Porsi Kecil)");
-  checkNutrition(input.fiSmall, "Serat (Porsi Kecil)");
-
-  checkNutrition(input.eLarge, "Energi (Porsi Besar)");
-  checkNutrition(input.pLarge, "Protein (Porsi Besar)");
-  checkNutrition(input.fLarge, "Lemak (Porsi Besar)");
-  checkNutrition(input.cLarge, "Karbo (Porsi Besar)");
-  checkNutrition(input.fiLarge, "Serat (Porsi Besar)");
+  PORTIONS.forEach((portion) => {
+    NUTRIENT_KEYS.forEach((n) => {
+      checkNutrition(
+        input.nutrition[portion.key][n],
+        `${NUTRIENT_LABELS[n]} (${portion.short})`,
+      );
+    });
+  });
 
   return { valid: errors.length === 0, errors };
 }

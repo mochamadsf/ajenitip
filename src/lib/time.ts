@@ -30,6 +30,27 @@ export function formatTimeShortWIB(date: Date = new Date()): string {
   });
 }
 
+/** Normalisasi "HH:MM:SS" (atau "HH:MM") menjadi "HH:MM" format 24 jam */
+export function normalizeTimeShort(t: string | null | undefined): string {
+  if (!t) return "";
+  return t.substring(0, 5);
+}
+
+/**
+ * Gabungkan dua waktu "HH:MM" menjadi rentang "07:00 - 08:00" (24 jam).
+ * Mengembalikan null jika keduanya kosong.
+ */
+export function formatTimeRange(
+  start?: string | null,
+  end?: string | null,
+): string | null {
+  const s = normalizeTimeShort(start);
+  const e = normalizeTimeShort(end);
+  if (!s && !e) return null;
+  if (s && e) return `${s} - ${e}`;
+  return s || e;
+}
+
 /** Format date as "Senin, 1 Januari 2025" */
 export function formatDateWIB(date: Date = new Date()): string {
   return date.toLocaleDateString("id-ID", {
@@ -46,7 +67,7 @@ export function formatDateShortWIB(date: Date = new Date()): string {
   return date.toLocaleDateString("id-ID", {
     timeZone: WIB_TIMEZONE,
     year: "numeric",
-    month: "short",
+    month: "long",
     day: "numeric",
   });
 }
@@ -75,7 +96,7 @@ export function parseTimeOnDate(timeStr: string, dateStr: string): Date {
  */
 export function calculateRemainingSeconds(
   deliveryTime: Date,
-  safeHours: number
+  safeHours: number,
 ): number {
   const safeUntil = new Date(deliveryTime.getTime() + safeHours * 3600 * 1000);
   const now = new Date();
@@ -125,7 +146,7 @@ export type SafetyStatus = "AMAN" | "PERINGATAN" | "BAHAYA";
  */
 export function getSafetyStatus(
   remainingSeconds: number,
-  totalSafeSeconds: number
+  totalSafeSeconds: number,
 ): SafetyStatus {
   if (remainingSeconds <= 0) return "BAHAYA";
   const ratio = remainingSeconds / totalSafeSeconds;
@@ -138,7 +159,7 @@ export function getSafetyStatus(
  */
 export function getProgressRatio(
   remainingSeconds: number,
-  totalSafeSeconds: number
+  totalSafeSeconds: number,
 ): number {
   if (totalSafeSeconds <= 0) return 0;
   return Math.max(0, Math.min(1, remainingSeconds / totalSafeSeconds));

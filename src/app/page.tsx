@@ -53,9 +53,9 @@ export default function DashboardPage() {
   let remainingText = "";
   if (menu) {
     const deliveryTime =
-      menu.batch3_delivery_time ||
-      menu.batch2_delivery_time ||
-      menu.batch1_delivery_time;
+      menu.batch3_delivery_end ||
+      menu.batch2_delivery_end ||
+      menu.batch1_delivery_end;
     if (deliveryTime) {
       const deliveryDate = parseTimeOnDate(deliveryTime, menu.menu_date);
       const rem = calculateRemainingSeconds(deliveryDate, menu.safe_hours);
@@ -362,8 +362,8 @@ export default function DashboardPage() {
                     Informasi Gizi
                   </p>
                   <p className="text-sm font-bold text-foreground">
-                    {menu.energy_small
-                      ? `${menu.energy_small} kkal (Porsi Kecil)`
+                    {menu.energy_balita
+                      ? `${menu.energy_balita} kkal (Porsi Kecil - Balita)`
                       : "Lihat Detail Gizi"}
                   </p>
                 </div>

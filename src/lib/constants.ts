@@ -2,6 +2,10 @@
  * Static content constants — not editable by admin.
  */
 
+import type { LucideIcon } from "lucide-react";
+import { Baby, GraduationCap, Heart, School } from "lucide-react";
+import type { PortionKey } from "@/lib/supabase/types";
+
 export const SAFETY_WARNING_TITLE = "⚠ Peringatan Keamanan Pangan";
 
 export const SAFETY_WARNING_ITEMS = [
@@ -54,3 +58,59 @@ export const NUTRITION_UNITS: Record<string, string> = {
   carbs: "g",
   fiber: "g",
 };
+
+// ── 4 Kategori Porsi (sesuai standar MBG) ──────────────────────────────
+
+export interface PortionConfig {
+  key: PortionKey;
+  /** Label singkat untuk toggle/tab */
+  short: string;
+  /** Kelompok porsi: "Porsi Kecil" / "Porsi Besar" */
+  group: string;
+  /** Nama lengkap kategori penerima */
+  title: string;
+  icon: LucideIcon;
+  /** Kelas warna chip header kartu */
+  chip: string;
+  /** Kelas warna teks aksen */
+  accent: string;
+}
+
+export const PORTIONS: PortionConfig[] = [
+  {
+    key: "balita",
+    short: "Balita",
+    group: "Porsi Kecil",
+    title: "Balita",
+    icon: Baby,
+    chip: "bg-amber-50 text-amber-700",
+    accent: "text-amber-600",
+  },
+  {
+    key: "ibu",
+    short: "Ibu Hamil & Menyusui",
+    group: "Porsi Besar",
+    title: "Ibu Hamil & Ibu Menyusui",
+    icon: Heart,
+    chip: "bg-rose-50 text-rose-700",
+    accent: "text-rose-600",
+  },
+  {
+    key: "tk",
+    short: "TK/PAUD/KB/RA/SD 1-3",
+    group: "Porsi Kecil",
+    title: "TK/PAUD/KB/RA/SD 1-3",
+    icon: School,
+    chip: "bg-sky-50 text-sky-700",
+    accent: "text-sky-600",
+  },
+  {
+    key: "sd",
+    short: "SD 4-6/SMP/SMA",
+    group: "Porsi Besar",
+    title: "SD 4-6/SMP/SMA",
+    icon: GraduationCap,
+    chip: "bg-emerald-50 text-emerald-700",
+    accent: "text-emerald-600",
+  },
+];

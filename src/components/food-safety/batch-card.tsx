@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DailyMenu } from "@/lib/supabase/types";
+import { formatTimeRange } from "@/lib/time";
 
 interface BatchCardProps {
   menu: DailyMenu;
@@ -18,12 +19,15 @@ interface BatchCardProps {
 export function BatchCard({ menu, batch }: BatchCardProps) {
   const productionTime =
     batch === 1 ? menu.batch1_production_time : batch === 2 ? menu.batch2_production_time : menu.batch3_production_time;
-  const deliveryTime =
-    batch === 1 ? menu.batch1_delivery_time : batch === 2 ? menu.batch2_delivery_time : menu.batch3_delivery_time;
+  const deliveryStart =
+    batch === 1 ? menu.batch1_delivery_start : batch === 2 ? menu.batch2_delivery_start : menu.batch3_delivery_start;
+  const deliveryEnd =
+    batch === 1 ? menu.batch1_delivery_end : batch === 2 ? menu.batch2_delivery_end : menu.batch3_delivery_end;
+  const deliveryRange = formatTimeRange(deliveryStart, deliveryEnd);
   const delivered =
     batch === 1 ? menu.batch1_delivered : batch === 2 ? menu.batch2_delivered : menu.batch3_delivered;
 
-  if (!productionTime && !deliveryTime) return null;
+  if (!productionTime && !deliveryRange) return null;
 
   return (
     <div className="bg-white rounded-2xl border border-border p-5 card-hover animate-fade-in">
@@ -97,10 +101,10 @@ export function BatchCard({ menu, batch }: BatchCardProps) {
           </div>
           <div className="flex-1">
             <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
-              Jam Pengiriman
+              Rentang Pengiriman (24 jam)
             </p>
             <p className="text-sm font-bold text-foreground tabular-nums">
-              {deliveryTime || "—"} WIB
+              {deliveryRange || "—"} WIB
             </p>
           </div>
         </div>

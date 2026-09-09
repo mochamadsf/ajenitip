@@ -54,8 +54,11 @@ export function SafetyStatusCard({ menu }: RingTimerProps) {
   }, []);
 
   const { status, remaining, total, progress, timeDisplay } = useMemo(() => {
-    // Use the latest delivery time to calculate safety
-    const deliveryTime = menu.batch2_delivery_time || menu.batch1_delivery_time;
+    // Use the latest delivery end time to calculate safety
+    const deliveryTime =
+      menu.batch3_delivery_end ||
+      menu.batch2_delivery_end ||
+      menu.batch1_delivery_end;
     if (!deliveryTime) {
       return {
         status: "AMAN" as SafetyStatus,

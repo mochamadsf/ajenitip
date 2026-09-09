@@ -20,34 +20,47 @@ export const DEMO_MENU: DailyMenu = {
   ],
   photo_url: null,
   batch1_production_time: "05:00",
-  batch1_delivery_time: "07:30",
-  batch2_production_time: "10:30:00",
-  batch2_delivery_time: "11:00:00",
+  batch1_delivery_start: "07:00",
+  batch1_delivery_end: "08:00",
   batch1_delivered: true,
+  batch2_production_time: "10:30",
+  batch2_delivery_start: "11:00",
+  batch2_delivery_end: "12:00",
   batch2_delivered: false,
-  batch3_production_time: "15:00:00",
-  batch3_delivery_time: "15:30:00",
+  batch3_production_time: "15:00",
+  batch3_delivery_start: "15:30",
+  batch3_delivery_end: "16:30",
   batch3_delivered: false,
   safe_hours: 4,
   beneficiary_count: 350,
   nutritionist_name: "Ns. Siti Aminah, S.Gz",
-  energy_small: 450,
-  protein_small: 18,
-  fat_small: 15,
-  carbs_small: 60,
-  fiber_small: 5,
-  energy_large: 650,
-  protein_large: 28,
-  fat_large: 22,
-  carbs_large: 85,
-  fiber_large: 7,
+  energy_balita: 450,
+  protein_balita: 18,
+  fat_balita: 15,
+  carbs_balita: 60,
+  fiber_balita: 5,
+  energy_ibu: 700,
+  protein_ibu: 30,
+  fat_ibu: 25,
+  carbs_ibu: 90,
+  fiber_ibu: 8,
+  energy_tk: 350,
+  protein_tk: 15,
+  fat_tk: 12,
+  carbs_tk: 45,
+  fiber_tk: 4,
+  energy_sd: 650,
+  protein_sd: 28,
+  fat_sd: 22,
+  carbs_sd: 85,
+  fiber_sd: 7,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
 
 export const DEMO_KITCHEN_CONFIG: KitchenConfig = {
   id: "demo-config",
-  kitchen_name: "Dapur SPPG Aje",
+  kitchen_name: "Dapur SPPG Bojongloa Kaler Sukaasih 2",
   instagram_url: "https://instagram.com/dapursppg",
   tiktok_url: "https://tiktok.com/@dapursppg",
   updated_at: new Date().toISOString(),
@@ -56,7 +69,8 @@ export const DEMO_KITCHEN_CONFIG: KitchenConfig = {
 export function isSupabaseConfigured(): boolean {
   return (
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://your-project.supabase.co" &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !==
+      "https://your-project.supabase.co" &&
     !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== "your-anon-key-here"
   );

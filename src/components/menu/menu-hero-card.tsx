@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { ShieldCheck, Calendar, ImageIcon } from "lucide-react";
+import { ShieldCheck, Calendar, ImageIcon, Truck } from "lucide-react";
 import type { DailyMenu } from "@/lib/supabase/types";
-import { formatDateWIB } from "@/lib/time";
+import { formatDateWIB, formatTimeRange } from "@/lib/time";
 
 interface MenuHeroProps {
   menu: DailyMenu;
@@ -11,6 +11,27 @@ interface MenuHeroProps {
 
 export function MenuHeroCard({ menu }: MenuHeroProps) {
   const menuDate = new Date(menu.menu_date + "T00:00:00+07:00");
+
+  const deliveryRanges = [
+    {
+      label: "Batch 1",
+      start: menu.batch1_delivery_start,
+      end: menu.batch1_delivery_end,
+      delivered: menu.batch1_delivered,
+    },
+    {
+      label: "Batch 2",
+      start: menu.batch2_delivery_start,
+      end: menu.batch2_delivery_end,
+      delivered: menu.batch2_delivered,
+    },
+    {
+      label: "Batch 3",
+      start: menu.batch3_delivery_start,
+      end: menu.batch3_delivery_end,
+      delivered: menu.batch3_delivered,
+    },
+  ].filter((r) => formatTimeRange(r.start, r.end));
 
   return (
     <div className="bg-white rounded-3xl border border-border overflow-hidden animate-fade-in flex flex-col md:flex-row shadow-sm">
@@ -52,6 +73,26 @@ export function MenuHeroCard({ menu }: MenuHeroProps) {
           {menu.menu_name}
         </h2>
         
+        {/* Jadwal rentang pengiriman per batch (24 jam) */}
+        {deliveryRanges.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-5">
+            {deliveryRanges.map((r) => (
+              <span
+                key={r.label}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-border/60 text-xs font-semibold text-foreground"
+              >
+                <Truck
+                  size={12}
+                  className={
+                    r.delivered ? "text-emerald-500" : "text-orange-500"
+                  }
+                />
+                {r.label}: {formatTimeRange(r.start, r.end)} WIB
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-4 mt-auto pt-6 border-t border-border/50">
           {menu.beneficiary_count > 0 && (
             <div className="flex flex-col">

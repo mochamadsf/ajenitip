@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import { useKitchenConfig } from "@/lib/supabase/hooks";
 
 // Custom SVG icons for social media
@@ -105,6 +107,18 @@ export function Footer() {
                 <span className="text-xs font-medium">TikTok</span>
               </a>
             )}
+
+            {/* Discreet admin access — mengisi titik akses panel admin di mobile.
+                Guard tetap di proxy + auth, link ini hanya pintu masuk yang halus. */}
+            <Link
+              href="/admin/login"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
+              aria-label="Masuk ke Panel Admin"
+              title="Masuk Panel Admin"
+            >
+              <Lock size={18} />
+              <span className="text-xs font-medium">Panel Admin</span>
+            </Link>
           </div>
 
           {/* Copyright */}
