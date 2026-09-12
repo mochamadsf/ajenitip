@@ -10,7 +10,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Dapur SPPG — Sistem Menu & Food Safety Digital",
+  title: "SPPG BKS 2",
   description:
     "Pantau status keamanan pangan real-time, lihat menu harian, dan riwayat menu dari Dapur SPPG (Satuan Pelayanan Pemenuhan Gizi). Makan bergizi gratis, aman, dan terpantau.",
   keywords: [
@@ -20,6 +20,14 @@ export const metadata: Metadata = {
     "menu harian",
     "makan bergizi gratis",
     "dapur",
+    "mbg",
+    "mbg bandung",
+    "sppg bandung",
+    "dapur sppg",
+    "dapur mbg",
+    "dapur mbg bandung",
+    "sppg bojongloa",
+    "sppg sukaasih",
   ],
 };
 

@@ -1,11 +1,10 @@
 "use client";
 
 import { MainLayout } from "@/components/layout/main-layout";
-import { SafetyStatusCard } from "@/components/food-safety/safety-status-card";
-import { BatchCard } from "@/components/food-safety/batch-card";
+import { BatchSafetyRings } from "@/components/food-safety/batch-safety-rings";
 import { SafetySummaryTable } from "@/components/food-safety/safety-summary-table";
 import { useTodayMenu } from "@/lib/supabase/hooks";
-import { RingTimerSkeleton, TableSkeleton, CardSkeleton } from "@/components/ui/skeleton";
+import { TableSkeleton, CardSkeleton } from "@/components/ui/skeleton";
 
 export default function FoodSafetyPage() {
   const { menu, loading, error } = useTodayMenu();
@@ -26,11 +25,7 @@ export default function FoodSafetyPage() {
 
         {loading ? (
           <div className="space-y-6">
-            <RingTimerSkeleton />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
+            <CardSkeleton />
             <TableSkeleton />
           </div>
         ) : error ? (
@@ -43,15 +38,8 @@ export default function FoodSafetyPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Main Status & Ring Timer */}
-            <SafetyStatusCard menu={menu} />
-
-            {/* Batch Schedules */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <BatchCard menu={menu} batch={1} />
-              <BatchCard menu={menu} batch={2} />
-              <BatchCard menu={menu} batch={3} />
-            </div>
+            {/* Safety Card: 1 card — realtime clock + 3 batch countdown rings */}
+            <BatchSafetyRings menu={menu} />
 
             {/* Summary Table */}
             <SafetySummaryTable menu={menu} />

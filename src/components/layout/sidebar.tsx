@@ -82,19 +82,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-
-      {/* Footer in sidebar */}
-      <div className="p-4 border-t border-border">
-        <Link
-          href="/admin/login"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
-        >
-          <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center">
-            <span className="text-[10px] font-bold">A</span>
-          </div>
-          Panel Admin
-        </Link>
-      </div>
     </aside>
   );
 }

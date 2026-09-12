@@ -28,6 +28,10 @@ export const SERVING_SUGGESTIONS = [
 
 export const DEFAULT_KITCHEN_NAME = "Dapur SPPG";
 
+// ── Identitas SPPG (kredit resmi di footer) ─────────────────────────────
+export const SPPG_LABEL = "SPPG Bojongloa Kaler Sukaasih 2";
+export const SPPG_HEAD_NAME = "Ahmad Jainal S.Kom";
+
 export const CERTIFICATION_LOGOS = [
   { name: "Halal", alt: "Sertifikasi Halal" },
   { name: "SLHS", alt: "Sertifikasi SLHS" },

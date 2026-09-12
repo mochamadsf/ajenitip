@@ -64,16 +64,25 @@ export function SafetySummaryTable({ menu }: SummaryTableProps) {
             </tr>
             <tr className="hover:bg-surface/50 transition-colors">
               <td className="px-4 py-3 font-medium text-foreground">
-                Rentang Pengiriman
+                Pengiriman
               </td>
               <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                {formatTimeRange(menu.batch1_delivery_start, menu.batch1_delivery_end) || "—"}
+                {formatTimeRange(
+                  menu.batch1_delivery_start,
+                  menu.batch1_delivery_end,
+                ) || "—"}
               </td>
               <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                {formatTimeRange(menu.batch2_delivery_start, menu.batch2_delivery_end) || "—"}
+                {formatTimeRange(
+                  menu.batch2_delivery_start,
+                  menu.batch2_delivery_end,
+                ) || "—"}
               </td>
               <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                {formatTimeRange(menu.batch3_delivery_start, menu.batch3_delivery_end) || "—"}
+                {formatTimeRange(
+                  menu.batch3_delivery_start,
+                  menu.batch3_delivery_end,
+                ) || "—"}
               </td>
             </tr>
             <tr className="hover:bg-surface/50 transition-colors">

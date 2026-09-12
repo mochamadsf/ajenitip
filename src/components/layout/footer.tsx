@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { Lock } from "lucide-react";
 import { useKitchenConfig } from "@/lib/supabase/hooks";
+import { SPPG_LABEL, SPPG_HEAD_NAME } from "@/lib/constants";
 
 // Custom SVG icons for social media
 function InstagramIcon({ size = 18 }: { size?: number }) {
@@ -42,9 +41,18 @@ function TikTokIcon({ size = 18 }: { size?: number }) {
 }
 
 const CERTIFICATIONS = [
-  { name: "Halal", url: "https://akcdn.detik.net.id/community/media/visual/2022/03/15/kenapa-logo-halal-diganti-ada-perpindahan-wewenang-dari-mui-ke-kemenag.jpeg?w=700&q=90" },
-  { name: "SLHS", url: "https://zonalogo.com/assets/sertifikat-laik-higiene-sanitasi-slhs.webp?preview=landscape&w=960" },
-  { name: "BNSP", url: "https://i0.wp.com/environment-indonesia.com/wp-content/uploads/2020/08/Logo-BNSP.png?ssl=1" },
+  {
+    name: "Halal",
+    url: "https://akcdn.detik.net.id/community/media/visual/2022/03/15/kenapa-logo-halal-diganti-ada-perpindahan-wewenang-dari-mui-ke-kemenag.jpeg?w=700&q=90",
+  },
+  {
+    name: "SLHS",
+    url: "https://zonalogo.com/assets/sertifikat-laik-higiene-sanitasi-slhs.webp?preview=landscape&w=960",
+  },
+  {
+    name: "BNSP",
+    url: "https://i0.wp.com/environment-indonesia.com/wp-content/uploads/2020/08/Logo-BNSP.png?ssl=1",
+  },
   { name: "Badan Gizi Nasional", url: "https://www.bgn.go.id/logo-bgn.png" },
 ];
 
@@ -107,24 +115,12 @@ export function Footer() {
                 <span className="text-xs font-medium">TikTok</span>
               </a>
             )}
-
-            {/* Discreet admin access — mengisi titik akses panel admin di mobile.
-                Guard tetap di proxy + auth, link ini hanya pintu masuk yang halus. */}
-            <Link
-              href="/admin/login"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
-              aria-label="Masuk ke Panel Admin"
-              title="Masuk Panel Admin"
-            >
-              <Lock size={18} />
-              <span className="text-xs font-medium">Panel Admin</span>
-            </Link>
           </div>
 
-          {/* Copyright */}
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} {config?.kitchen_name || "Dapur SPPG"}.
-            Sistem Menu & Food Safety Digital.
+          {/* Copyright — kredit resmi SPPG & Kepala SPPG */}
+          <p className="text-xs text-muted-foreground text-center sm:text-left">
+            © {new Date().getFullYear()} {SPPG_LABEL} — Kepala SPPG:{" "}
+            {SPPG_HEAD_NAME}
           </p>
         </div>
       </div>
