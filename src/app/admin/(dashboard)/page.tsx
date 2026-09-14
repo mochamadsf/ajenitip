@@ -19,6 +19,24 @@ function isSupabaseConfiguredServer(): boolean {
   );
 }
 
+/**
+ * Next.js signals "this route cannot be prerendered because it uses a
+ * Request-time API" by throwing an error whose `digest` is
+ * `DYNAMIC_SERVER_USAGE` (see https://nextjs.org/docs/messages/dynamic-server-error).
+ *
+ * `createClient()` reads cookies through `@supabase/ssr`, so this route is
+ * dynamic. That control-flow error must never be swallowed by a `try/catch`,
+ * otherwise the build reports a bogus database failure.
+ */
+function isDynamicServerUsageError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "digest" in err &&
+    (err as { digest?: unknown }).digest === "DYNAMIC_SERVER_USAGE"
+  );
+}
+
 export default async function AdminDashboardPage() {
   const configured = isSupabaseConfiguredServer();
   const today = formatISODateWIB(new Date());
@@ -51,6 +69,8 @@ export default async function AdminDashboardPage() {
         todayMenu = data;
       }
     } catch (err) {
+      // Re-throw Next.js' dynamic-rendering bailout signal (see helper above).
+      if (isDynamicServerUsageError(err)) throw err;
       console.error("[Admin] DB connection error:", err);
       dbConnected = false;
     }
@@ -95,7 +115,7 @@ export default async function AdminDashboardPage() {
           <p className="text-xs text-muted-foreground mb-4">
             {todayMenu
               ? `Sudah diatur: ${todayMenu.menu_name}`
-              : "Belum ada menu yang diatur untuk hari ini."}
+              : "Belum ada menu yang diatur."}
           </p>
           <Link
             href="/admin/menu"

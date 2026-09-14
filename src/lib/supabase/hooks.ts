@@ -91,21 +91,21 @@ export function useTodayMenu() {
         return;
       }
       try {
-        const today = formatISODateWIB(new Date());
+        // Tampilkan menu terbaru yang tersedia. Bila ada menu untuk hari ini,
+        // baris itulah yang terambil (urut menurun berdasarkan tanggal);
+        // bila belum ada, menu terakhir tetap ditampilkan — sehingga tidak ada
+        // lagi empty-state "belum ada data".
         const { data, error: err } = await supabase
           .from("daily_menus")
           .select("*")
-          .eq("menu_date", today)
-          .single();
+          .order("menu_date", { ascending: false })
+          .limit(1);
 
         if (err) {
-          if (err.code === "PGRST116") {
-            setMenu(null); // No menu for today
-          } else {
-            setError(err.message);
-          }
+          setError(err.message);
         } else {
-          setMenu(data as DailyMenu);
+          const latest = (data as DailyMenu[] | null)?.[0];
+          setMenu(latest ?? null);
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -120,24 +120,32 @@ export function useTodayMenu() {
 }
 
 export function useMenuByDate(date: string | null) {
-  const [menu, setMenu] = useState<DailyMenu | null>(null);
+  // The fetched row is stored together with the date it belongs to, so the value
+  // returned during render is always derived from the requested `date`. This
+  // avoids having to clear state from inside the effect when `date` is null.
+  const [result, setResult] = useState<{
+    date: string;
+    menu: DailyMenu | null;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!date) {
-      setMenu(null);
-      return;
-    }
+    if (!date) return;
+
+    const requestedDate = date;
+    // Responses for a superseded date must not overwrite the newer one.
+    let cancelled = false;
 
     async function fetch() {
       setLoading(true);
+      setError(null);
       if (!isSupabaseConfigured()) {
-        if (date === formatISODateWIB(new Date())) {
-          setMenu(DEMO_MENU);
-        } else {
-          setMenu(null);
-        }
+        setResult({
+          date: requestedDate,
+          menu:
+            requestedDate === formatISODateWIB(new Date()) ? DEMO_MENU : null,
+        });
         setLoading(false);
         return;
       }
@@ -145,25 +153,53 @@ export function useMenuByDate(date: string | null) {
         const { data, error: err } = await supabase
           .from("daily_menus")
           .select("*")
-          .eq("menu_date", date)
+          .eq("menu_date", requestedDate)
           .single();
 
+        if (cancelled) return;
+
         if (err) {
-          if (err.code === "PGRST116") setMenu(null);
-          else setError(err.message);
+          if (err.code === "PGRST116") {
+            // Tidak ada menu untuk tanggal ini → tampilkan menu terbaru yang
+            // tersedia agar data tidak tersembunyi di balik empty-state.
+            const { data: latest } = await supabase
+              .from("daily_menus")
+              .select("*")
+              .order("menu_date", { ascending: false })
+              .limit(1);
+
+            if (!cancelled) {
+              setResult({
+                date: requestedDate,
+                menu: (latest as DailyMenu[] | null)?.[0] ?? null,
+              });
+            }
+          } else {
+            setError(err.message);
+          }
         } else {
-          setMenu(data as DailyMenu);
+          setResult({ date: requestedDate, menu: data as DailyMenu });
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Unknown error");
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Unknown error");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     fetch();
+
+    return () => {
+      cancelled = true;
+    };
   }, [date]);
 
-  return { menu, loading, error };
+  return {
+    menu: date && result?.date === date ? result.menu : null,
+    loading: date ? loading : false,
+    error,
+  };
 }
 
 export function useMenuHistory() {
@@ -182,8 +218,7 @@ export function useMenuHistory() {
       const { data, error: err } = await supabase
         .from("daily_menus")
         .select("*")
-        .order("menu_date", { ascending: false })
-        .limit(30);
+        .order("menu_date", { ascending: false });
 
       if (err) setError(err.message);
       else setMenus((data as DailyMenu[]) || []);
@@ -220,7 +255,12 @@ export function useMenuHistory() {
     }
   }, []);
 
+  // Initial load on mount: subscribing to the external data source (Supabase).
+  // `fetchAll()` sets `loading` synchronously before awaiting the request, which
+  // the rule flags in general but is a no-op render here because `loading`
+  // already starts as `true`.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount; loading already starts true
     fetchAll();
   }, [fetchAll]);
 

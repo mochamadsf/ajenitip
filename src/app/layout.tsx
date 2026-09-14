@@ -33,7 +33,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="id" className={`${plusJakarta.variable} h-full antialiased`}>
+    <html
+      lang="id"
+      /* Next.js 16 berhenti meng-override `scroll-behavior` saat navigasi SPA.
+         Karena globals.css memakai `scroll-behavior: smooth`, atribut ini
+         mengembalikan perilaku lama (navigasi langsung ke atas halaman).
+         https://nextjs.org/docs/app/guides/upgrading/version-16#scroll-behavior-override */
+      data-scroll-behavior="smooth"
+      className={`${plusJakarta.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );

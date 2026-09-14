@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { ImageIcon, Users, Calendar } from "lucide-react";
 import type { DailyMenu } from "@/lib/supabase/types";
 import { formatDateShortWIB } from "@/lib/time";

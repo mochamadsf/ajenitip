@@ -4,30 +4,74 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ShieldCheck,
+  ShieldAlert,
+  ShieldX,
+  Package,
   UtensilsCrossed,
   Users,
   Clock,
   ArrowRight,
   TrendingUp,
+  Flame,
+  Beef,
+  Droplets,
+  Wheat,
+  Leaf,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { useTodayMenu, useKitchenConfig } from "@/lib/supabase/hooks";
-import {
-  formatTimeWIB,
-  formatDateWIB,
-  getSafetyStatus,
-  calculateRemainingSeconds,
-  formatDuration,
-  parseTimeOnDate,
-} from "@/lib/time";
+import { formatTimeWIB, formatDateWIB, formatDurationCompact, formatDateShortWIB } from "@/lib/time";
+import { getBatchesSafety } from "@/lib/food-safety";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { NUTRITION_LABELS, NUTRITION_UNITS, PORTIONS } from "@/lib/constants";
+import {
+  NUTRIENT_KEYS,
+  getPortionNutrition,
+  type NutrientKey,
+} from "@/lib/supabase/types";
 import type { SafetyStatus } from "@/lib/time";
 
 const STATUS_STYLES: Record<SafetyStatus, string> = {
   AMAN: "badge-safe",
   PERINGATAN: "badge-warning",
   BAHAYA: "badge-danger",
+};
+
+const STATUS_TEXT_STYLES: Record<SafetyStatus, string> = {
+  AMAN: "text-emerald-600",
+  PERINGATAN: "text-amber-600",
+  BAHAYA: "text-red-600",
+};
+
+const STATUS_ICONS: Record<SafetyStatus, typeof ShieldCheck> = {
+  AMAN: ShieldCheck,
+  PERINGATAN: ShieldAlert,
+  BAHAYA: ShieldX,
+};
+
+/** Warna chip label batch — sama dengan halaman Food Safety. */
+const BATCH_CHIP_STYLES: Record<1 | 2 | 3, string> = {
+  1: "bg-blue-50 text-blue-600",
+  2: "bg-violet-50 text-violet-600",
+  3: "bg-pink-50 text-pink-600",
+};
+
+/** Ikon & warna zat gizi — sejalan dengan tabel gizi di halaman Menu Hari Ini. */
+const NUTRIENT_ICONS: Record<NutrientKey, typeof Flame> = {
+  energy: Flame,
+  protein: Beef,
+  fat: Droplets,
+  carbs: Wheat,
+  fiber: Leaf,
+};
+
+const NUTRIENT_TEXT_COLORS: Record<NutrientKey, string> = {
+  energy: "text-orange-500",
+  protein: "text-red-500",
+  fat: "text-amber-500",
+  carbs: "text-blue-500",
+  fiber: "text-emerald-500",
 };
 
 export default function DashboardPage() {
@@ -48,21 +92,10 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate safety status
-  let safetyStatus: SafetyStatus = "AMAN";
-  let remainingText = "";
-  if (menu) {
-    const deliveryTime =
-      menu.batch3_delivery_end ||
-      menu.batch2_delivery_end ||
-      menu.batch1_delivery_end;
-    if (deliveryTime) {
-      const deliveryDate = parseTimeOnDate(deliveryTime, menu.menu_date);
-      const rem = calculateRemainingSeconds(deliveryDate, menu.safe_hours);
-      safetyStatus = getSafetyStatus(rem, menu.safe_hours * 3600);
-      remainingText = formatDuration(Math.max(0, rem));
-    }
-  }
+  // Status keamanan 3 batch — rumus sama dengan halaman Food Safety:
+  // jam produksi tiap batch + safe_hours (4 jam setelah produksi).
+  // Dihitung saat render; clock di atas me-render ulang tiap detik agar live.
+  const batchSafety = menu ? getBatchesSafety(menu) : [];
 
   return (
     <MainLayout>
@@ -114,7 +147,7 @@ export default function DashboardPage() {
                       Status Keamanan
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Monitoring Waktu
+                      Monitoring 3 Batch
                     </p>
                   </div>
                 </div>
@@ -125,33 +158,71 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex-1 flex flex-col justify-end">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    Status Saat Ini:
-                  </span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold",
-                      STATUS_STYLES[safetyStatus],
-                    )}
-                  >
-                    {safetyStatus}
-                  </span>
-                </div>
-                {remainingText ? (
-                  <div className="bg-surface rounded-xl p-3 border border-border">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      Sisa waktu aman (Maks {menu?.safe_hours} Jam):
+                {menu ? (
+                  <>
+                    {/* Countdown 3 batch: jam produksi tiap batch + safe_hours */}
+                    <div className="space-y-2">
+                      {batchSafety.map((b) => {
+                        const StatusIcon = STATUS_ICONS[b.status];
+                        return (
+                          <div
+                            key={b.batch}
+                            className="bg-surface rounded-xl p-2.5 border border-border"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold",
+                                  BATCH_CHIP_STYLES[b.batch],
+                                )}
+                              >
+                                <Package size={11} strokeWidth={2.5} />
+                                Batch {b.batch}
+                              </span>
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold",
+                                  STATUS_STYLES[b.status],
+                                )}
+                              >
+                                <StatusIcon size={11} strokeWidth={2.2} />
+                                {b.status}
+                              </span>
+                            </div>
+
+                            {b.productionTime ? (
+                              <div className="flex items-end justify-between gap-2">
+                                <p className="text-[10px] text-muted-foreground">
+                                  Produksi {b.productionTime.slice(0, 5)} WIB
+                                </p>
+                                <p
+                                  className={cn(
+                                    "text-sm font-bold font-mono leading-none tabular-nums",
+                                    STATUS_TEXT_STYLES[b.status],
+                                  )}
+                                >
+                                  {formatDurationCompact(
+                                    Math.max(0, b.remainingSeconds),
+                                  )}
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-muted-foreground">
+                                Belum dijadwalkan
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <p className="text-[10px] text-muted-foreground mt-3">
+                      Masa aman {menu.safe_hours} jam setelah produksi tiap batch
                     </p>
-                    <p className="text-lg font-bold text-foreground font-mono leading-snug whitespace-pre-line">
-                      {remainingText
-                        .replace(/ (jam|menit|detik)/g, " $1\n")
-                        .trim()}
-                    </p>
-                  </div>
+                  </>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Belum ada pengiriman aktif hari ini.
+                    Belum ada data batch.
                   </p>
                 )}
               </div>
@@ -189,9 +260,18 @@ export default function DashboardPage() {
               <div className="flex-1 flex flex-col justify-end">
                 {menu ? (
                   <>
-                    <p className="text-sm text-foreground font-bold line-clamp-1 mb-2">
-                      {menu.menu_name}
-                    </p>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p className="text-sm text-foreground font-bold line-clamp-1">
+                        {menu.menu_name}
+                      </p>
+                      {/* Tanggal data menu — penting karena bila menu hari ini belum
+                          ada, menu terakhir yang ditampilkan. */}
+                      <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                        {formatDateShortWIB(
+                          new Date(menu.menu_date + "T00:00:00+07:00"),
+                        )}
+                      </span>
+                    </div>
                     <ul className="space-y-1.5 mb-4">
                       {menu.menu_components.slice(0, 2).map((comp, idx) => (
                         <li
@@ -274,7 +354,7 @@ export default function DashboardPage() {
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground flex-1">
-                    Belum ada menu untuk hari ini.
+                    Belum ada data menu.
                   </p>
                 )}
               </div>
@@ -375,6 +455,113 @@ export default function DashboardPage() {
                 </Link>
               </div>
             </div>
+          </div>
+        )}
+        {/* Ringkasan Informasi Gizi — 5 zat gizi × 4 kategori porsi */}
+        {menu && (
+          <div className="bg-white rounded-2xl border border-border p-5 sm:p-6 animate-slide-up stagger-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
+                  <Flame size={20} strokeWidth={2} className="text-orange-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-foreground">
+                    Ringkasan Informasi Gizi
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {menu.menu_name} ·{" "}
+                    {formatDateShortWIB(
+                      new Date(menu.menu_date + "T00:00:00+07:00"),
+                    )}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/menu-hari-ini"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                Detail Lengkap
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[580px] border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left pb-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Zat Gizi
+                    </th>
+                    {PORTIONS.map((p) => {
+                      const PortionIcon = p.icon;
+                      return (
+                        <th key={p.key} className="pb-3 px-1.5 align-bottom">
+                          <span
+                            className={cn(
+                              "inline-flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold leading-tight",
+                              p.chip,
+                            )}
+                          >
+                            <span className="flex items-center gap-1">
+                              <PortionIcon size={11} strokeWidth={2.4} />
+                              {p.group}
+                            </span>
+                            <span className="font-semibold opacity-80">
+                              {p.short}
+                            </span>
+                          </span>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {NUTRIENT_KEYS.map((key) => {
+                    const NutrientIcon = NUTRIENT_ICONS[key];
+                    return (
+                      <tr key={key} className="border-t border-border">
+                        <td className="py-2.5 pr-2">
+                          <span className="flex items-center gap-2 text-xs font-semibold text-foreground whitespace-nowrap">
+                            <NutrientIcon
+                              size={14}
+                              strokeWidth={2}
+                              className={NUTRIENT_TEXT_COLORS[key]}
+                            />
+                            {NUTRITION_LABELS[key]}
+                            <span className="text-[10px] font-normal text-muted-foreground">
+                              ({NUTRITION_UNITS[key]})
+                            </span>
+                          </span>
+                        </td>
+                        {PORTIONS.map((p) => {
+                          const value = getPortionNutrition(menu, p.key)[key];
+                          return (
+                            <td key={p.key} className="py-2.5 px-1.5 text-center">
+                              <span
+                                className={cn(
+                                  "text-sm font-bold tabular-nums",
+                                  value == null
+                                    ? "text-muted-foreground/50"
+                                    : "text-foreground",
+                                )}
+                              >
+                                {value ?? "—"}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground mt-3">
+              Nilai gizi per porsi untuk 4 kategori penerima. Tanda “—” berarti
+              data belum diisi.
+            </p>
           </div>
         )}
       </div>

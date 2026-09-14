@@ -99,10 +99,15 @@ export function AdminNav({ userEmail }: { userEmail: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close the drawer whenever the route changes
-  useEffect(() => {
+  // Close the drawer whenever the route changes (e.g. browser back/forward while
+  // it is open). Adjusting the state during render — instead of in an effect —
+  // is the pattern recommended by React for "reset state when a value changes":
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   // Lock body scroll while the drawer is open + close on Escape
   useEffect(() => {

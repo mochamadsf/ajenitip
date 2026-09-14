@@ -50,7 +50,7 @@ function MenuContent() {
         </div>
       ) : !menu ? (
         <div className="bg-surface border border-border rounded-2xl p-12 text-center text-muted-foreground">
-          Belum ada data menu untuk tanggal ini.
+          Belum ada data menu.
         </div>
       ) : (
         <div className="space-y-6">

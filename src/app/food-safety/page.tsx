@@ -34,7 +34,7 @@ export default function FoodSafetyPage() {
           </div>
         ) : !menu ? (
           <div className="bg-surface border border-border rounded-2xl p-12 text-center text-muted-foreground">
-            Belum ada data menu dan jadwal untuk hari ini.
+            Belum ada data menu dan jadwal.
           </div>
         ) : (
           <div className="space-y-6">

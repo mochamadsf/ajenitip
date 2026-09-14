@@ -5,7 +5,7 @@ import { MainLayout } from "@/components/layout/main-layout";
 import { DateFilter } from "@/components/history/date-filter";
 import { HistoryGrid } from "@/components/history/history-grid";
 import { useMenuHistory } from "@/lib/supabase/hooks";
-import { GridSkeleton, CardSkeleton } from "@/components/ui/skeleton";
+import { GridSkeleton } from "@/components/ui/skeleton";
 
 export default function RiwayatMenuPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);

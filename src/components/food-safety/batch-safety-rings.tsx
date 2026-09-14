@@ -5,13 +5,10 @@ import { ShieldCheck, ShieldAlert, ShieldX, Clock, Package } from "lucide-react"
 import { cn } from "@/lib/utils";
 import {
   formatTimeWIB,
-  calculateRemainingSeconds,
   formatDurationCompact,
-  getSafetyStatus,
-  getProgressRatio,
-  parseTimeOnDate,
   type SafetyStatus,
 } from "@/lib/time";
+import { getBatchSafety, type BatchNumber } from "@/lib/food-safety";
 import type { DailyMenu } from "@/lib/supabase/types";
 
 interface BatchSafetyRingsProps {
@@ -57,37 +54,19 @@ const BATCH_STYLES: Record<1 | 2 | 3, string> = {
   3: "bg-pink-50 text-pink-600",
 };
 
-function getBatchProductionTime(
-  menu: DailyMenu,
-  batch: 1 | 2 | 3,
-): string | null {
-  return batch === 1
-    ? menu.batch1_production_time
-    : batch === 2
-      ? menu.batch2_production_time
-      : menu.batch3_production_time;
-}
-
 interface BatchRingProps {
   menu: DailyMenu;
-  batch: 1 | 2 | 3;
+  batch: BatchNumber;
 }
 
 function BatchRing({ menu, batch }: BatchRingProps) {
-  // Recomputed on every render — the parent re-renders each second via the shared clock
-  const productionTime = getBatchProductionTime(menu, batch);
-  let status: SafetyStatus = "AMAN";
-  let remaining = 0;
-  let progress = 0;
-
-  if (productionTime) {
-    const productionDate = parseTimeOnDate(productionTime, menu.menu_date);
-    const totalSafe = menu.safe_hours * 3600;
-    const rem = calculateRemainingSeconds(productionDate, menu.safe_hours);
-    remaining = Math.max(0, rem);
-    status = getSafetyStatus(rem, totalSafe);
-    progress = getProgressRatio(rem, totalSafe);
-  }
+  // Recomputed on every render — the parent re-renders each second via the shared clock.
+  // Rumus diambil dari helper bersama: jam produksi batch + menu.safe_hours.
+  const { productionTime, status, remainingSeconds, progress } = getBatchSafety(
+    menu,
+    batch,
+  );
+  const remaining = Math.max(0, remainingSeconds);
 
   const config = STATUS_CONFIG[status];
   const StatusIcon = config.icon;
@@ -167,7 +146,8 @@ function BatchRing({ menu, batch }: BatchRingProps) {
 
       {/* Production time reference */}
       <p className="text-[11px] text-muted-foreground">
-        Dari produksi {productionTime || "—"} WIB · {menu.safe_hours} jam
+        Dari produksi {productionTime ? productionTime.slice(0, 5) : "—"} WIB ·{" "}
+        {menu.safe_hours} jam
       </p>
     </div>
   );
