@@ -26,12 +26,21 @@ export function CardSkeleton() {
 
 export function HeroSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-border overflow-hidden">
-      <Skeleton className="aspect-[16/9] w-full rounded-none" />
-      <div className="p-5 sm:p-6 space-y-3">
-        <Skeleton className="h-3 w-40" />
-        <Skeleton className="h-6 w-64" />
-        <Skeleton className="h-3 w-48" />
+    <div className="bg-white rounded-2xl sm:rounded-3xl border border-border overflow-hidden flex flex-col lg:flex-row">
+      {/* Banner foto — tinggi ringkas seperti kartu hero yang sebenarnya */}
+      <Skeleton className="w-full h-44 sm:h-56 lg:h-auto lg:w-[40%] lg:min-h-[300px] shrink-0" />
+      <div className="flex-1 p-4 sm:p-5 lg:p-6 space-y-4">
+        <Skeleton className="hidden lg:block h-6 w-2/3" />
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <Skeleton className="h-14 flex-1 min-w-[140px] rounded-xl" />
+          <Skeleton className="h-14 flex-1 min-w-[140px] rounded-xl" />
+        </div>
+        <Skeleton className="h-4 w-40" />
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     </div>
   );

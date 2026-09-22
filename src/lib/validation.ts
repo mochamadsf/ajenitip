@@ -1,6 +1,11 @@
-import type { NutrientKey, PortionKey } from "@/lib/supabase/types";
+import type {
+  BatchRecipient,
+  NutrientKey,
+  PortionKey,
+} from "@/lib/supabase/types";
 import { NUTRIENT_KEYS } from "@/lib/supabase/types";
 import { PORTIONS } from "@/lib/constants";
+import { MAX_RECIPIENTS_PER_BATCH } from "@/lib/beneficiaries";
 
 export type BatchKey = "b1" | "b2" | "b3";
 
@@ -8,6 +13,11 @@ export interface BatchTimesInput {
   prod: string;
   delStart: string;
   delEnd: string;
+  /**
+   * Daftar penerima (sekolah) batch ini — satu batch boleh beberapa penerima,
+   * masing-masing dengan jumlah porsinya sendiri.
+   */
+  recipients: BatchRecipient[];
 }
 
 export interface MenuFormInput {
@@ -84,7 +94,7 @@ export function validateMenuInput(input: MenuFormInput): ValidationResult {
 
   // Batch Time Logic — pengiriman berupa rentang (mulai - selesai), format 24 jam
   (Object.keys(BATCH_LABELS) as BatchKey[]).forEach((key) => {
-    const { prod, delStart, delEnd } = input.batches[key];
+    const { prod, delStart, delEnd, recipients } = input.batches[key];
     const label = BATCH_LABELS[key];
 
     if (prod && delStart && delStart < prod) {
@@ -97,6 +107,56 @@ export function validateMenuInput(input: MenuFormInput): ValidationResult {
         `Jam selesai pengiriman ${label} (${delEnd}) tidak boleh lebih awal dari jam mulai (${delStart}).`,
       );
     }
+
+    // Daftar penerima (sekolah) per batch — baris kosong diabaikan,
+    // sama seperti saat data disimpan.
+    const rows = (recipients ?? []).filter(
+      (r) => (r.school?.trim() ?? "") !== "" || Number(r.count) > 0,
+    );
+
+    if (rows.length > MAX_RECIPIENTS_PER_BATCH) {
+      errors.push(
+        `${label} maksimal ${MAX_RECIPIENTS_PER_BATCH} penerima (sekolah) dalam satu batch.`,
+      );
+    }
+
+    const seenSchools = new Set<string>();
+    rows.forEach((r, i) => {
+      const school = (r.school ?? "").trim();
+      const count = Number(r.count);
+      const pos = `penerima ke-${i + 1}`;
+
+      if (school.length > 120) {
+        errors.push(`Nama sekolah ${label} ${pos} maksimal 120 karakter.`);
+      }
+
+      if (!Number.isFinite(count) || !Number.isInteger(count) || count < 0) {
+        errors.push(
+          `Jumlah porsi ${label} ${pos} harus berupa angka bulat non-negatif (>= 0).`,
+        );
+      } else if (count > 100000) {
+        errors.push(
+          `Jumlah porsi ${label} ${pos} melebihi batas wajar (maks. 100.000).`,
+        );
+      } else if (school && count === 0) {
+        errors.push(`Jumlah porsi ${label} untuk “${school}” minimal 1 porsi.`);
+      }
+
+      if (!school) {
+        errors.push(
+          `Nama sekolah ${label} ${pos} wajib diisi karena jumlah porsinya ${count}.`,
+        );
+        return;
+      }
+
+      const dedupeKey = school.toLowerCase();
+      if (seenSchools.has(dedupeKey)) {
+        errors.push(
+          `Nama sekolah “${school}” tercatat lebih dari sekali pada ${label}.`,
+        );
+      }
+      seenSchools.add(dedupeKey);
+    });
   });
 
   // Nutrition Validation (4 kategori porsi; angka non-negatif jika diisi)

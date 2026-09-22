@@ -1,6 +1,18 @@
 export type PortionKey = "balita" | "ibu" | "tk" | "sd";
 export type NutrientKey = "energy" | "protein" | "fat" | "carbs" | "fiber";
 
+/**
+ * Satu penerima dalam satu batch pengiriman.
+ * Satu batch boleh punya beberapa penerima (sekolah) — disimpan di kolom
+ * JSONB `batch{n}_recipients` pada tabel `daily_menus`.
+ */
+export interface BatchRecipient {
+  /** Nama sekolah/penerima manfaat */
+  school: string;
+  /** Jumlah porsi untuk penerima ini (0 = belum diisi) */
+  count: number;
+}
+
 export const NUTRIENT_KEYS = [
   "energy",
   "protein",
@@ -20,16 +32,37 @@ export interface DailyMenu {
   batch1_delivery_start: string | null;
   batch1_delivery_end: string | null;
   batch1_delivered?: boolean;
+  /**
+   * Daftar penerima (sekolah) batch 1 — satu batch boleh beberapa penerima.
+   * Bentuk: `[{ school: "SDN Sukaasih 2", count: 150 }, ...]`
+   */
+  batch1_recipients: BatchRecipient[] | null;
+  /** Ringkasan nama sekolah batch 1 — kolom lama, diisi otomatis dari recipients */
+  batch1_school_name: string | null;
+  /** Total porsi batch 1 — kolom lama, diisi otomatis dari recipients */
+  batch1_beneficiary_count: number;
 
   batch2_production_time: string | null;
   batch2_delivery_start: string | null;
   batch2_delivery_end: string | null;
   batch2_delivered?: boolean;
+  /** Daftar penerima (sekolah) batch 2 */
+  batch2_recipients: BatchRecipient[] | null;
+  /** Ringkasan nama sekolah batch 2 — kolom lama, diisi otomatis dari recipients */
+  batch2_school_name: string | null;
+  /** Total porsi batch 2 — kolom lama, diisi otomatis dari recipients */
+  batch2_beneficiary_count: number;
 
   batch3_production_time: string | null;
   batch3_delivery_start: string | null;
   batch3_delivery_end: string | null;
   batch3_delivered?: boolean;
+  /** Daftar penerima (sekolah) batch 3 */
+  batch3_recipients: BatchRecipient[] | null;
+  /** Ringkasan nama sekolah batch 3 — kolom lama, diisi otomatis dari recipients */
+  batch3_school_name: string | null;
+  /** Total porsi batch 3 — kolom lama, diisi otomatis dari recipients */
+  batch3_beneficiary_count: number;
 
   safe_hours: number;
   beneficiary_count: number;

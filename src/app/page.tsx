@@ -17,11 +17,21 @@ import {
   Droplets,
   Wheat,
   Leaf,
+  School,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { useTodayMenu, useKitchenConfig } from "@/lib/supabase/hooks";
-import { formatTimeWIB, formatDateWIB, formatDurationCompact, formatDateShortWIB } from "@/lib/time";
+import {
+  formatTimeWIB,
+  formatDateWIB,
+  formatDurationCompact,
+  formatDateShortWIB,
+} from "@/lib/time";
 import { getBatchesSafety } from "@/lib/food-safety";
+import {
+  getBatchBeneficiaries,
+  getTotalBeneficiaries,
+} from "@/lib/beneficiaries";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { NUTRITION_LABELS, NUTRITION_UNITS, PORTIONS } from "@/lib/constants";
@@ -56,6 +66,40 @@ const BATCH_CHIP_STYLES: Record<1 | 2 | 3, string> = {
   2: "bg-violet-50 text-violet-600",
   3: "bg-pink-50 text-pink-600",
 };
+
+/**
+ * Warna baris rincian batch di card "Penerima Manfaat" — sejalan dengan
+ * `BATCH_CHIP_STYLES` di file ini dan halaman Food Safety.
+ */
+const BATCH_BENEFICIARY_STYLES: Record<
+  1 | 2 | 3,
+  { row: string; chip: string; bar: string; accent: string }
+> = {
+  1: {
+    row: "bg-blue-50/70 border-blue-100",
+    chip: "bg-blue-600 text-white shadow-sm shadow-blue-200",
+    bar: "bg-gradient-to-r from-blue-600 to-sky-400",
+    accent: "text-blue-500",
+  },
+  2: {
+    row: "bg-violet-50/70 border-violet-100",
+    chip: "bg-violet-600 text-white shadow-sm shadow-violet-200",
+    bar: "bg-gradient-to-r from-violet-600 to-fuchsia-400",
+    accent: "text-violet-500",
+  },
+  3: {
+    row: "bg-pink-50/70 border-pink-100",
+    chip: "bg-pink-600 text-white shadow-sm shadow-pink-200",
+    bar: "bg-gradient-to-r from-pink-600 to-rose-400",
+    accent: "text-pink-500",
+  },
+};
+
+/**
+ * Jumlah maksimal sekolah yang ditampilkan per batch di card "Penerima
+ * Manfaat" — sisa sekolah diringkas menjadi "+n sekolah lainnya".
+ */
+const MAX_VISIBLE_SCHOOLS_PER_BATCH = 3;
 
 /** Ikon & warna zat gizi — sejalan dengan tabel gizi di halaman Menu Hari Ini. */
 const NUTRIENT_ICONS: Record<NutrientKey, typeof Flame> = {
@@ -96,6 +140,10 @@ export default function DashboardPage() {
   // jam produksi tiap batch + safe_hours (4 jam setelah produksi).
   // Dihitung saat render; clock di atas me-render ulang tiap detik agar live.
   const batchSafety = menu ? getBatchesSafety(menu) : [];
+
+  // Rincian penerima manfaat per batch (nama sekolah + jumlah porsi dari admin)
+  const batchBeneficiaries = menu ? getBatchBeneficiaries(menu) : [];
+  const totalBeneficiaries = menu ? getTotalBeneficiaries(menu) : 0;
 
   return (
     <MainLayout>
@@ -217,7 +265,8 @@ export default function DashboardPage() {
                     </div>
 
                     <p className="text-[10px] text-muted-foreground mt-3">
-                      Masa aman {menu.safe_hours} jam setelah produksi tiap batch
+                      Masa aman {menu.safe_hours} jam setelah produksi tiap
+                      batch
                     </p>
                   </>
                 ) : (
@@ -360,36 +409,145 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            {/* Beneficiaries Card */}
-            <div className="bg-white rounded-2xl border border-border p-6 animate-slide-up stagger-3 flex flex-col h-full">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
-                  <Users
-                    size={24}
-                    strokeWidth={2}
-                    className="text-violet-600"
-                  />
+            {/* Beneficiaries Card — total + rincian sekolah per batch */}
+            <div className="relative overflow-hidden bg-white rounded-2xl border border-border p-6 card-hover animate-slide-up stagger-3 flex flex-col h-full">
+              {/* Aksen dekoratif */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-16 -right-12 w-44 h-44 rounded-full bg-gradient-to-br from-violet-200/70 via-fuchsia-100/50 to-transparent blur-2xl"
+              />
+
+              <div className="relative flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-sm shadow-violet-200">
+                  <Users size={24} strokeWidth={2} className="text-white" />
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-foreground">
                     Penerima Manfaat
                   </h2>
-                  <p className="text-xs text-muted-foreground">Total Porsi</p>
+                  <p className="text-xs text-muted-foreground">
+                    Distribusi 3 Batch
+                  </p>
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col justify-end">
+              <div className="relative flex-1 flex flex-col justify-end">
                 {menu ? (
                   <>
-                    <div className="flex items-end gap-2 mb-2">
-                      <p className="text-4xl font-black text-foreground tabular-nums leading-none">
-                        {menu.beneficiary_count.toLocaleString("id-ID")}
+                    {/* Total porsi hari ini */}
+                    <div className="flex items-end gap-2">
+                      <p className="text-4xl font-black leading-none tabular-nums bg-gradient-to-br from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
+                        {totalBeneficiaries.toLocaleString("id-ID")}
                       </p>
-                      <p className="text-sm font-semibold text-muted-foreground mb-1">
-                        Anak
-                      </p>
+                      <div className="mb-0.5">
+                        <p className="text-sm font-bold text-foreground leading-none">
+                          Porsi
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Total hari ini
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg w-fit mt-2">
+
+                    {/* Rincian per batch: daftar sekolah penerima + jumlah porsi */}
+                    <div className="mt-4 space-y-2">
+                      {batchBeneficiaries.map((b) => {
+                        const style = BATCH_BENEFICIARY_STYLES[b.batch];
+                        const share =
+                          totalBeneficiaries > 0
+                            ? Math.min(
+                                100,
+                                Math.round((b.count / totalBeneficiaries) * 100),
+                              )
+                            : 0;
+                        // Satu batch bisa punya banyak penerima — tampilkan
+                        // sebagian saja agar card tetap ringkas.
+                        const visibleRecipients = b.recipients.slice(
+                          0,
+                          MAX_VISIBLE_SCHOOLS_PER_BATCH,
+                        );
+                        const hiddenCount =
+                          b.recipients.length - visibleRecipients.length;
+
+                        return (
+                          <div
+                            key={b.batch}
+                            className={cn(
+                              "flex items-start gap-2.5 rounded-xl border px-2.5 py-2",
+                              style.row,
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "flex items-center justify-center w-7 h-7 rounded-lg text-[10px] font-black shrink-0",
+                                style.chip,
+                              )}
+                              title={`Batch ${b.batch} · ${b.schoolCount} penerima`}
+                            >
+                              B{b.batch}
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                              {visibleRecipients.length > 0 ? (
+                                <ul className="space-y-0.5">
+                                  {visibleRecipients.map((recipient, i) => (
+                                    <li
+                                      key={i}
+                                      className="flex items-center gap-1 text-[11px]"
+                                    >
+                                      <School
+                                        size={11}
+                                        strokeWidth={2.4}
+                                        className={cn("shrink-0", style.accent)}
+                                      />
+                                      <span
+                                        className="font-bold text-foreground truncate flex-1"
+                                        title={recipient.school}
+                                      >
+                                        {recipient.school}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">
+                                        {recipient.count.toLocaleString("id-ID")}
+                                      </span>
+                                    </li>
+                                  ))}
+                                  {hiddenCount > 0 && (
+                                    <li className="pl-[15px] text-[10px] font-semibold text-muted-foreground">
+                                      +{hiddenCount} sekolah lainnya
+                                    </li>
+                                  )}
+                                </ul>
+                              ) : (
+                                <p className="text-[11px] font-medium text-muted-foreground italic">
+                                  Belum diisi admin
+                                </p>
+                              )}
+
+                              <div className="mt-1 h-1.5 rounded-full bg-white/80 overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all duration-500",
+                                    style.bar,
+                                  )}
+                                  style={{ width: `${share}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-black text-foreground tabular-nums leading-none">
+                                {b.count.toLocaleString("id-ID")}
+                              </p>
+                              <p className="text-[9px] font-semibold text-muted-foreground">
+                                porsi
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg w-fit mt-4">
                       <TrendingUp size={14} />
                       <span className="font-medium">
                         Jadwal distribusi aktif
@@ -419,7 +577,7 @@ export default function DashboardPage() {
                     Masa Aman Konsumsi
                   </p>
                   <p className="text-sm font-bold text-foreground">
-                    {menu.safe_hours} Jam setelah dikirim
+                    {menu.safe_hours} Jam setelah selesai produksi
                   </p>
                 </div>
               </div>
@@ -463,7 +621,11 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
-                  <Flame size={20} strokeWidth={2} className="text-orange-500" />
+                  <Flame
+                    size={20}
+                    strokeWidth={2}
+                    className="text-orange-500"
+                  />
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-foreground">
@@ -537,7 +699,10 @@ export default function DashboardPage() {
                         {PORTIONS.map((p) => {
                           const value = getPortionNutrition(menu, p.key)[key];
                           return (
-                            <td key={p.key} className="py-2.5 px-1.5 text-center">
+                            <td
+                              key={p.key}
+                              className="py-2.5 px-1.5 text-center"
+                            >
                               <span
                                 className={cn(
                                   "text-sm font-bold tabular-nums",

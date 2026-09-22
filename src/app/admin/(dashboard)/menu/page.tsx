@@ -7,13 +7,16 @@ import {
   ImagePlus,
   Loader2,
   Save,
+  School,
   Plus,
   Calendar,
   Clock,
   ArrowRight,
   CheckCircle2,
   Flame,
+  Trash2,
   Truck,
+  UserPlus,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -27,7 +30,14 @@ import { isSupabaseConfigured, DEMO_MENU } from "@/lib/supabase/hooks";
 import { PORTIONS } from "@/lib/constants";
 import { TimeSelect } from "@/components/admin/time-select";
 import {
+  MAX_RECIPIENTS_PER_BATCH,
+  getRecipientTotal,
+  getSchoolNamesSummary,
+  normalizeRecipients,
+} from "@/lib/beneficiaries";
+import {
   NUTRIENT_KEYS,
+  type BatchRecipient,
   type NutrientKey,
   type PortionKey,
 } from "@/lib/supabase/types";
@@ -46,6 +56,11 @@ type BatchForm = {
   delStart: string;
   delEnd: string;
   delivered: boolean;
+  /**
+   * Daftar penerima (sekolah) batch ini — satu batch boleh beberapa penerima,
+   * masing-masing dengan jumlah porsinya sendiri.
+   */
+  recipients: BatchRecipient[];
 };
 type BatchesState = Record<BatchKey, BatchForm>;
 type NutritionFormState = Record<PortionKey, Record<NutrientKey, string>>;
@@ -55,6 +70,7 @@ const EMPTY_BATCH: BatchForm = {
   delStart: "",
   delEnd: "",
   delivered: false,
+  recipients: [],
 };
 
 const emptyNutrition = (): NutritionFormState => ({
@@ -86,6 +102,27 @@ const BATCH_META = [
   },
 ];
 
+/**
+ * Daftar penerima satu batch dari baris DB (atau demo) ke bentuk state form.
+ * Kolom JSONB `batch{n}_recipients` jadi sumber utama; bila belum ada isinya
+ * (data lama), dipakai kolom `batch{n}_school_name` + `batch{n}_beneficiary_count`.
+ */
+function recipientsFromRecord(
+  row: Record<string, unknown> | null,
+  n: 1 | 2 | 3,
+): BatchRecipient[] {
+  const stored = normalizeRecipients(row?.[`batch${n}_recipients`]);
+  if (stored.length > 0) return stored;
+
+  const legacySchool =
+    (row?.[`batch${n}_school_name`] as string | null | undefined)?.trim() || "";
+  const legacyCount =
+    (row?.[`batch${n}_beneficiary_count`] as number | null | undefined) || 0;
+  if (!legacySchool && legacyCount <= 0) return [];
+
+  return [{ school: legacySchool, count: Math.max(0, legacyCount) }];
+}
+
 // Ambil data satu batch dari baris DB (atau demo) ke bentuk state form
 function batchFromRecord(
   row: Record<string, unknown> | null,
@@ -106,6 +143,7 @@ function batchFromRecord(
         5,
       ) || "",
     delivered: Boolean(row?.[`batch${n}_delivered`]),
+    recipients: recipientsFromRecord(row, n),
   };
 }
 
@@ -137,12 +175,33 @@ interface BatchEditorProps {
   onChange: (patch: Partial<BatchForm>) => void;
 }
 
-/** Kartu editor satu batch — horizontal: identitas → produksi → pengiriman → status */
+/**
+ * Kartu editor satu batch — satu batch boleh punya beberapa penerima:
+ * baris 1: identitas batch + total porsi + tombol tambah penerima,
+ * baris 2: daftar penerima (nama sekolah + jumlah porsi),
+ * baris 3: jadwal produksi/pengiriman + status kirim.
+ */
 function BatchEditor({ meta, value, onChange }: BatchEditorProps) {
+  const totalPorsi = getRecipientTotal(value.recipients);
+  const canAddRecipient = value.recipients.length < MAX_RECIPIENTS_PER_BATCH;
+
+  const updateRecipient = (index: number, patch: Partial<BatchRecipient>) =>
+    onChange({
+      recipients: value.recipients.map((r, i) =>
+        i === index ? { ...r, ...patch } : r,
+      ),
+    });
+
+  const removeRecipient = (index: number) =>
+    onChange({ recipients: value.recipients.filter((_, i) => i !== index) });
+
+  const addRecipient = () =>
+    onChange({ recipients: [...value.recipients, { school: "", count: 0 }] });
+
   return (
-    <div className="rounded-xl border border-border bg-surface/40 p-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        {/* Identitas batch */}
+    <div className="rounded-xl border border-border bg-surface/40 p-3 space-y-3">
+      {/* Baris 1: identitas batch + ringkasan porsi + tombol tambah penerima */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span
           className={cn(
             "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold",
@@ -154,6 +213,92 @@ function BatchEditor({ meta, value, onChange }: BatchEditorProps) {
           <span className="font-semibold opacity-60"> {meta.slot}</span>
         </span>
 
+        <span className="text-[11px] font-semibold text-muted-foreground">
+          {value.recipients.length} penerima · Σ{" "}
+          <span className="font-bold text-foreground tabular-nums">
+            {totalPorsi.toLocaleString("id-ID")}
+          </span>{" "}
+          porsi
+        </span>
+
+        <button
+          type="button"
+          onClick={addRecipient}
+          disabled={!canAddRecipient}
+          title={
+            canAddRecipient
+              ? `Tambah penerima di ${meta.label}`
+              : `${meta.label} maksimal ${MAX_RECIPIENTS_PER_BATCH} penerima`
+          }
+          className="sm:ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-primary/30 bg-primary-light text-[11px] font-bold text-primary hover:bg-primary/15 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <UserPlus size={13} />
+          Tambah Penerima
+        </button>
+      </div>
+
+      {/* Baris 2: daftar penerima — sekolah + jumlah porsi masing-masing */}
+      <div className="space-y-2">
+        {/* Header kolom, posisinya sejajar dengan input tiap baris */}
+        <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="flex flex-1 min-w-0 items-center gap-1">
+            <School size={11} strokeWidth={2.4} />
+            Sekolah Penerima
+          </span>
+          <span className="flex w-[88px] sm:w-[100px] shrink-0 items-center gap-1">
+            <Users size={11} strokeWidth={2.4} />
+            Porsi
+          </span>
+          <span className="w-9 shrink-0" aria-hidden="true" />
+        </div>
+
+        {value.recipients.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground italic">
+            Belum ada penerima di {meta.label}. Klik “Tambah Penerima” untuk
+            menambahkan sekolah beserta jumlah porsinya.
+          </p>
+        ) : (
+          value.recipients.map((recipient, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={recipient.school}
+                onChange={(e) =>
+                  updateRecipient(index, { school: e.target.value })
+                }
+                maxLength={120}
+                placeholder="Contoh: SDN Sukaasih 2"
+                aria-label={`Sekolah penerima ${index + 1} ${meta.label}`}
+                className="flex-1 min-w-0 px-2.5 py-1.5 rounded-md border border-border bg-white text-sm font-semibold focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+              />
+
+              <input
+                type="number"
+                min={0}
+                value={recipient.count}
+                onChange={(e) =>
+                  updateRecipient(index, { count: Number(e.target.value) })
+                }
+                aria-label={`Jumlah porsi penerima ${index + 1} ${meta.label}`}
+                className="w-[88px] sm:w-[100px] shrink-0 px-2.5 py-1.5 rounded-md border border-border bg-white text-sm font-semibold tabular-nums focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+              />
+
+              <button
+                type="button"
+                onClick={() => removeRecipient(index)}
+                title={`Hapus penerima ${index + 1}`}
+                aria-label={`Hapus penerima ${index + 1} pada ${meta.label}`}
+                className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-white text-muted-foreground hover:text-red-600 hover:border-red-200 hover:bg-red-50 active:scale-95 transition-all"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Baris 3: alur produksi → pengiriman + status kirim */}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 pt-3 border-t border-border">
         {/* Selesai produksi */}
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -170,13 +315,13 @@ function BatchEditor({ meta, value, onChange }: BatchEditorProps) {
         {/* Panah alur produksi → pengiriman */}
         <ArrowRight
           size={14}
-          className="text-muted-foreground/70 hidden sm:block"
+          className="text-muted-foreground/70 hidden sm:block mb-2"
         />
 
         {/* Rentang pengiriman */}
         <div className="flex flex-col gap-1">
           <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-            Rentang Pengiriman (24 jam)
+            Rentang Pengiriman
           </span>
           <div className="flex items-center gap-1.5">
             <TimeSelect
@@ -441,6 +586,21 @@ export default function AdminMenuEditorPage() {
       }
     }
 
+    // Susun penerima tiap batch: rapikan nama sekolah & buang baris kosong,
+    // lalu sinkronkan kolom lama (school_name + beneficiary_count) agar data
+    // lama/consumer lain tetap membaca nilai yang benar.
+    const batchRecipients = (key: BatchKey) => {
+      const rows = normalizeRecipients(batches[key].recipients);
+      return {
+        rows,
+        schoolName: getSchoolNamesSummary(rows),
+        total: getRecipientTotal(rows),
+      };
+    };
+    const b1 = batchRecipients("b1");
+    const b2 = batchRecipients("b2");
+    const b3 = batchRecipients("b3");
+
     const payload = {
       menu_date: date,
       menu_name: menuName.trim(),
@@ -454,16 +614,25 @@ export default function AdminMenuEditorPage() {
       batch1_delivery_start: batches.b1.delStart || null,
       batch1_delivery_end: batches.b1.delEnd || null,
       batch1_delivered: batches.b1.delivered,
+      batch1_recipients: b1.rows,
+      batch1_school_name: b1.schoolName,
+      batch1_beneficiary_count: b1.total,
 
       batch2_production_time: batches.b2.prod || null,
       batch2_delivery_start: batches.b2.delStart || null,
       batch2_delivery_end: batches.b2.delEnd || null,
       batch2_delivered: batches.b2.delivered,
+      batch2_recipients: b2.rows,
+      batch2_school_name: b2.schoolName,
+      batch2_beneficiary_count: b2.total,
 
       batch3_production_time: batches.b3.prod || null,
       batch3_delivery_start: batches.b3.delStart || null,
       batch3_delivery_end: batches.b3.delEnd || null,
       batch3_delivered: batches.b3.delivered,
+      batch3_recipients: b3.rows,
+      batch3_school_name: b3.schoolName,
+      batch3_beneficiary_count: b3.total,
 
       ...nutritionPayload,
     };
@@ -492,6 +661,23 @@ export default function AdminMenuEditorPage() {
       setSaving(false);
     }
   };
+
+  // Total porsi & jumlah sekolah dari rincian penerima Batch 1–3
+  // (pembanding untuk kolom "Jumlah Penerima")
+  const batchRecipientRows = [
+    batches.b1.recipients,
+    batches.b2.recipients,
+    batches.b3.recipients,
+  ];
+  const batchPorsiTotal = batchRecipientRows.reduce(
+    (sum, rows) => sum + getRecipientTotal(rows),
+    0,
+  );
+  const batchSchoolTotal = batchRecipientRows.reduce(
+    (sum, rows) => sum + normalizeRecipients(rows).length,
+    0,
+  );
+  const totalMatchesBatches = batchPorsiTotal === beneficiaries;
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -664,8 +850,44 @@ export default function AdminMenuEditorPage() {
                     required
                     className="w-full px-2 py-1.5 rounded-md border border-border text-sm font-medium focus:border-primary"
                   />
+                  {batchPorsiTotal > 0 && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={cn(
+                          "text-[10px] font-semibold",
+                          totalMatchesBatches
+                            ? "text-emerald-600"
+                            : "text-amber-600",
+                        )}
+                      >
+                        Σ Batch 1–3: {batchPorsiTotal.toLocaleString("id-ID")}{" "}
+                        porsi
+                        {batchSchoolTotal > 0
+                          ? ` · ${batchSchoolTotal} sekolah`
+                          : ""}
+                      </span>
+                      {!totalMatchesBatches && (
+                        <button
+                          type="button"
+                          onClick={() => setBeneficiaries(batchPorsiTotal)}
+                          className="text-[10px] font-bold text-primary hover:underline"
+                        >
+                          Samakan
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              <p className="text-[11px] text-muted-foreground">
+                Daftar sekolah (bisa lebih dari satu) &amp; jumlah porsi tiap
+                batch diisi pada bagian{" "}
+                <span className="font-semibold text-foreground">
+                  Jadwal, Sekolah &amp; Pengiriman
+                </span>{" "}
+                di bawah.
+              </p>
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase">
@@ -682,15 +904,18 @@ export default function AdminMenuEditorPage() {
             </div>
           </div>
 
-          {/* Jadwal & Pengiriman — kartu horizontal per batch */}
+          {/* Jadwal, Sekolah & Pengiriman — kartu horizontal per batch */}
           <section className="bg-white rounded-2xl border border-border p-5 sm:p-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-border">
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-primary" />
                 <h3 className="text-sm font-bold text-foreground">
-                  Jadwal & Pengiriman
+                  Jadwal, Sekolah & Pengiriman
                 </h3>
               </div>
+              <span className="text-[11px] font-semibold text-muted-foreground">
+                Satu batch bisa diisi beberapa sekolah penerima
+              </span>
             </div>
 
             <div className="space-y-3">

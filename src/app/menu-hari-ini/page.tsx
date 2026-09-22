@@ -22,7 +22,7 @@ function MenuContent() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="animate-fade-in mb-8">
+      <div className="animate-fade-in">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
           {dateParam ? "Detail Menu" : "Menu Hari Ini"}
         </h1>

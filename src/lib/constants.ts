@@ -23,14 +23,13 @@ export const SERVING_SUGGESTIONS = [
   "Pastikan tangan dalam keadaan bersih sebelum menyentuh makanan.",
   "Gunakan sendok/garpu bersih untuk menyantap makanan.",
   "Jika tidak langsung dimakan, simpan makanan di tempat sejuk dan tertutup, serta konsumsi dalam waktu maksimal 1 jam.",
-  "Untuk porsi anak, pastikan suhu makanan tidak terlalu panas sebelum disajikan.",
 ];
 
 export const DEFAULT_KITCHEN_NAME = "Dapur SPPG";
 
 // ── Identitas SPPG (kredit resmi di footer) ─────────────────────────────
-export const SPPG_LABEL = "SPPG Bojongloa Kaler Sukaasih 2";
-export const SPPG_HEAD_NAME = "Ahmad Jainal S.Kom";
+export const SPPG_LABEL = "SPPG Kota Bandung Bojongloa Kaler Suka Asih 2";
+export const SPPG_HEAD_NAME = "Achmad Jainal S.Kom";
 
 export const CERTIFICATION_LOGOS = [
   { name: "Halal", alt: "Sertifikasi Halal" },
@@ -43,8 +42,16 @@ export const CERTIFICATION_LOGOS = [
 export const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" as const },
   { href: "/food-safety", label: "Food Safety", icon: "ShieldCheck" as const },
-  { href: "/menu-hari-ini", label: "Menu Hari Ini", icon: "UtensilsCrossed" as const },
-  { href: "/riwayat-menu", label: "Riwayat Menu", icon: "CalendarDays" as const },
+  {
+    href: "/menu-hari-ini",
+    label: "Menu Hari Ini",
+    icon: "UtensilsCrossed" as const,
+  },
+  {
+    href: "/riwayat-menu",
+    label: "Riwayat Menu",
+    icon: "CalendarDays" as const,
+  },
 ];
 
 export const NUTRITION_LABELS: Record<string, string> = {

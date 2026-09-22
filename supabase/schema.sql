@@ -30,18 +30,37 @@ CREATE TABLE IF NOT EXISTS daily_menus (
   batch1_delivery_start TIME,
   batch1_delivery_end TIME,
   batch1_delivered BOOLEAN NOT NULL DEFAULT false,
+
+  -- Batch 1: daftar penerima (sekolah) — satu batch boleh beberapa penerima
+  -- Format: [{"school": "SDN Sukaasih 2", "count": 150}, ...]
+  batch1_recipients JSONB NOT NULL DEFAULT '[]'::jsonb,
+  -- Batch 1: ringkasan nama sekolah & total porsi (diisi otomatis dari recipients)
+  batch1_school_name TEXT,
+  batch1_beneficiary_count INTEGER NOT NULL DEFAULT 0,
   
   -- Batch 2 Timings & Status (pengiriman = rentang waktu, format 24 jam)
   batch2_production_time TIME,
   batch2_delivery_start TIME,
   batch2_delivery_end TIME,
   batch2_delivered BOOLEAN NOT NULL DEFAULT false,
+
+  -- Batch 2: daftar penerima (sekolah) — satu batch boleh beberapa penerima
+  batch2_recipients JSONB NOT NULL DEFAULT '[]'::jsonb,
+  -- Batch 2: ringkasan nama sekolah & total porsi (diisi otomatis dari recipients)
+  batch2_school_name TEXT,
+  batch2_beneficiary_count INTEGER NOT NULL DEFAULT 0,
   
   -- Batch 3 Timings & Status (pengiriman = rentang waktu, format 24 jam)
   batch3_production_time TIME,
   batch3_delivery_start TIME,
   batch3_delivery_end TIME,
   batch3_delivered BOOLEAN NOT NULL DEFAULT false,
+
+  -- Batch 3: daftar penerima (sekolah) — satu batch boleh beberapa penerima
+  batch3_recipients JSONB NOT NULL DEFAULT '[]'::jsonb,
+  -- Batch 3: ringkasan nama sekolah & total porsi (diisi otomatis dari recipients)
+  batch3_school_name TEXT,
+  batch3_beneficiary_count INTEGER NOT NULL DEFAULT 0,
 
   -- Food Safety & Beneficiary Info
   safe_hours NUMERIC NOT NULL DEFAULT 4,
@@ -91,6 +110,62 @@ ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch2_delivery_start TIME;
 ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch2_delivery_end TIME;
 ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch3_delivery_start TIME;
 ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch3_delivery_end TIME;
+
+--     a2) Tambah kolom nama sekolah & jumlah porsi penerima per batch
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch1_school_name TEXT;
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch2_school_name TEXT;
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch3_school_name TEXT;
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch1_beneficiary_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch2_beneficiary_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch3_beneficiary_count INTEGER NOT NULL DEFAULT 0;
+
+--     a2b) Daftar penerima (sekolah) per batch — satu batch boleh beberapa penerima
+--          Format: [{"school": "SDN Sukaasih 2", "count": 150}, ...]
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch1_recipients JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch2_recipients JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS batch3_recipients JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+--     a2c) Backfill: baris lama (satu sekolah per batch) dipindahkan ke bentuk
+--          daftar penerima — hanya bila kolom recipients masih kosong,
+--          sehingga data baru tidak pernah ditimpa.
+UPDATE daily_menus
+SET batch1_recipients = jsonb_build_array(
+      jsonb_build_object(
+        'school', TRIM(batch1_school_name),
+        'count', COALESCE(batch1_beneficiary_count, 0)
+      )
+    )
+WHERE (batch1_recipients IS NULL OR batch1_recipients = '[]'::jsonb)
+  AND COALESCE(TRIM(batch1_school_name), '') <> '';
+
+UPDATE daily_menus
+SET batch2_recipients = jsonb_build_array(
+      jsonb_build_object(
+        'school', TRIM(batch2_school_name),
+        'count', COALESCE(batch2_beneficiary_count, 0)
+      )
+    )
+WHERE (batch2_recipients IS NULL OR batch2_recipients = '[]'::jsonb)
+  AND COALESCE(TRIM(batch2_school_name), '') <> '';
+
+UPDATE daily_menus
+SET batch3_recipients = jsonb_build_array(
+      jsonb_build_object(
+        'school', TRIM(batch3_school_name),
+        'count', COALESCE(batch3_beneficiary_count, 0)
+      )
+    )
+WHERE (batch3_recipients IS NULL OR batch3_recipients = '[]'::jsonb)
+  AND COALESCE(TRIM(batch3_school_name), '') <> '';
+
+--     a3) Backfill: total porsi kosong diisi dari jumlah ketiga batch
+--         (tidak mengubah baris yang totalnya sudah ada)
+UPDATE daily_menus
+SET beneficiary_count = batch1_beneficiary_count
+                      + batch2_beneficiary_count
+                      + batch3_beneficiary_count
+WHERE beneficiary_count = 0
+  AND (batch1_beneficiary_count + batch2_beneficiary_count + batch3_beneficiary_count) > 0;
 
 --     b) Tambah 20 kolom nilai gizi untuk 4 kategori porsi
 ALTER TABLE daily_menus ADD COLUMN IF NOT EXISTS energy_balita NUMERIC;
@@ -278,14 +353,23 @@ INSERT INTO daily_menus (
   batch1_delivery_start,
   batch1_delivery_end,
   batch1_delivered,
+  batch1_recipients,
+  batch1_school_name,
+  batch1_beneficiary_count,
   batch2_production_time,
   batch2_delivery_start,
   batch2_delivery_end,
   batch2_delivered,
+  batch2_recipients,
+  batch2_school_name,
+  batch2_beneficiary_count,
   batch3_production_time,
   batch3_delivery_start,
   batch3_delivery_end,
   batch3_delivered,
+  batch3_recipients,
+  batch3_school_name,
+  batch3_beneficiary_count,
   safe_hours,
   beneficiary_count,
   nutritionist_name,
@@ -317,14 +401,23 @@ INSERT INTO daily_menus (
   '07:00:00',
   '08:00:00',
   true,
+  '[{"school": "SDN Sukaasih 2", "count": 90}, {"school": "SD Al-Hikmah", "count": 60}]'::jsonb,
+  'SDN Sukaasih 2, SD Al-Hikmah',
+  150,
   '10:30:00',
   '11:00:00',
   '12:00:00',
   false,
+  '[{"school": "SMPN 12 Bandung", "count": 120}]'::jsonb,
+  'SMPN 12 Bandung',
+  120,
   '15:00:00',
   '15:30:00',
   '16:30:00',
   false,
+  '[{"school": "TK Tunas Harapan", "count": 50}, {"school": "PAUD Melati", "count": 30}]'::jsonb,
+  'TK Tunas Harapan, PAUD Melati',
+  80,
   4,
   350,
   'Ns. Siti Aminah, S.Gz',
@@ -339,14 +432,23 @@ INSERT INTO daily_menus (
   batch1_delivery_start = EXCLUDED.batch1_delivery_start,
   batch1_delivery_end = EXCLUDED.batch1_delivery_end,
   batch1_delivered = EXCLUDED.batch1_delivered,
+  batch1_recipients = EXCLUDED.batch1_recipients,
+  batch1_school_name = EXCLUDED.batch1_school_name,
+  batch1_beneficiary_count = EXCLUDED.batch1_beneficiary_count,
   batch2_production_time = EXCLUDED.batch2_production_time,
   batch2_delivery_start = EXCLUDED.batch2_delivery_start,
   batch2_delivery_end = EXCLUDED.batch2_delivery_end,
   batch2_delivered = EXCLUDED.batch2_delivered,
+  batch2_recipients = EXCLUDED.batch2_recipients,
+  batch2_school_name = EXCLUDED.batch2_school_name,
+  batch2_beneficiary_count = EXCLUDED.batch2_beneficiary_count,
   batch3_production_time = EXCLUDED.batch3_production_time,
   batch3_delivery_start = EXCLUDED.batch3_delivery_start,
   batch3_delivery_end = EXCLUDED.batch3_delivery_end,
   batch3_delivered = EXCLUDED.batch3_delivered,
+  batch3_recipients = EXCLUDED.batch3_recipients,
+  batch3_school_name = EXCLUDED.batch3_school_name,
+  batch3_beneficiary_count = EXCLUDED.batch3_beneficiary_count,
   safe_hours = EXCLUDED.safe_hours,
   beneficiary_count = EXCLUDED.beneficiary_count,
   nutritionist_name = EXCLUDED.nutritionist_name,
