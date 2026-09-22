@@ -239,7 +239,6 @@ function BatchEditor({ meta, value, onChange }: BatchEditorProps) {
 
       {/* Baris 2: daftar penerima — sekolah + jumlah porsi masing-masing */}
       <div className="space-y-2">
-        {/* Header kolom, posisinya sejajar dengan input tiap baris */}
         <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
           <span className="flex flex-1 min-w-0 items-center gap-1">
             <School size={11} strokeWidth={2.4} />
